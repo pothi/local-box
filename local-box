@@ -1,0 +1,201 @@
+#!/bin/bash
+
+set -o errexit -o pipefail -o noclobber -o nounset
+
+# TODO:
+#   - cron entry to trigger 'WP Cron'.
+#   - automatic update of core, plugins and themes.
+
+# to be run as a normal user with password-less sudo privileges
+
+# create SSL, insert an entry in /etc/hosts
+# create MySQL DB, User, Pass
+# create Nginx config
+# download WP and create wp-config.php
+
+# if number of arguments equals to zero
+if [ "$#" -eq 0 ] ; then
+    echo "Usage $0 example.com"; exit 1;
+fi
+
+domain=$1
+
+tld=$(echo $domain | awk -F '.' '{print $1}')
+db_name=${tld}_db
+db_user=${tld}_user
+
+function bootstrap_env {
+    user=
+    home_dir=
+    ssl_dir=
+    wp_user_name=
+    wp_user_pass=
+    [ -f ~/.envrc  ] && source ~/.envrc
+
+    [ -z "$user" ] && user=$USER
+    [ -z "$home_dir" ] && home_dir=$HOME
+    [ -z "$ssl_dir" ] && echo "SSL directory is empty - haven't you setup your own SSL Certificate Authority, yet?"
+
+    # setup WordPress user name
+    [ -z "$wp_user_name" ] && {
+        wp_user_name="${user}_$(pwgen -cns 4 1)"
+        echo "export wp_user_name=${wp_user_name}" >> ~/.envrc
+    }
+
+    # setup WordPress user password
+    [ -z "$wp_user_pass" ] && {
+        wp_user_pass="$(pwgen -cns 24 1)"
+        echo "export wp_user_pass=\"${wp_user_pass}\"" >> ~/.envrc
+    }
+
+    # echo $wp_user_name
+    # echo $wp_user_pass
+
+    # initialize wp_path that is based on home_dir value
+    wp_path=$home_dir/sites/${domain}/public
+
+    # get the DB password and prefix, if wp-config.php already exists.
+    if [ -f ${wp_path}/wp-config.php ] ; then
+        db_pass=`$(which sed) "s/[()',;]/ /g" ${wp_path}/wp-config.php | $(which grep) DB_PASSWORD | $(which awk) '{print $3}'`
+        db_prefix=`$(which sed) "s/[()',;]/ /g" ${wp_path}/wp-config.php | $(which grep) '^\$table_prefix' | $(which awk) '{print $3}'`
+    else
+        db_pass=$(pwgen -cnsv 20 1)
+        db_prefix=$(pwgen -A 2 1)
+    fi
+
+    csr_file=${ssl_dir}/domains/${domain}/temp.csr
+    privkey_file=${ssl_dir}/domains/$domain/privkey.pem
+    fullchain_file=${ssl_dir}/domains/${domain}/fullchain.pem
+
+    echo 'Env bootstrap done!'
+}
+
+function create_ssl {
+    # let's keep the domain SSL certificates in its own directory
+    [ ! -d "${ssl_dir}/domains/${domain}" ] && sudo mkdir -p ${ssl_dir}/domains/${domain}
+
+    # change the default domain name
+    sudo $(which sed) -i "s/example.com/$domain/g" ${ssl_dir}/openssl.cnf
+
+    # create CSR and then the SSL certificate
+    if [ ! -f $privkey_file ]; then
+        # create private key
+        sudo openssl genrsa -out ${privkey_file}
+    fi
+
+    if [ ! -f $fullchain_file ]; then
+        if [ ! -f $csr_file ] ; then
+            # create CSR from private key, if not exists
+            sudo openssl req -new \
+                -out $csr_file \
+                -key ${privkey_file} \
+                -config ${ssl_dir}/openssl.cnf \
+                -subj '/C=IN/ST=Tamil Nadu/L=Srivilliputhur/O=Tiny WP/CN=Juno'
+        fi
+
+        # create the full SSL certificate
+        sudo openssl x509 -req \
+            -in $csr_file \
+            -CA ${ssl_dir}/rootCA.pem \
+            -CAkey ${ssl_dir}/rootCA.key \
+            -CAcreateserial \
+            -out $fullchain_file \
+            -days 3650 \
+            -sha256 \
+            -extensions v3_req \
+            -extfile ${ssl_dir}/openssl.cnf
+    fi
+
+    # it's safe to remove CSR
+    [ -f $csr_file ] && sudo rm $csr_file
+
+    # change back to default domain name for reuse!
+    sudo $(which sed) -i "s/$domain/example.com/g" ${ssl_dir}/openssl.cnf
+
+    # finally insert an entry in /etc/hosts file
+    [ grep -w $domain /etc/hosts &> /dev/null ] && sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
+
+    echo 'SSL created!'
+}
+
+function create_mysql {
+    sudo mysql -e "CREATE DATABASE IF NOT EXISTS $db_name"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON ${db_name}.* TO ${db_user}@localhost identified by '${db_pass}'"
+    sudo mysql -e "FLUSH PRIVILEGES"
+    echo 'DB created!'
+}
+
+function install_wp {
+    [ ! -d ${wp_path} ] && mkdir -p $wp_path
+
+    # ideally should be done as normal user
+    cd $wp_path
+    wp core download || { echo "Warning: WP core already seem exists! In order to force download again using the flag --force"; }
+    [ ! -f wp-config.php ] && wp config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --dbprefix="${db_prefix}_"
+    wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
+    [ ! -f favicon.ico ] && wget https://wordpress.org/favicon.ico
+    # chown -R $user:$user $home_dir/sites/${domain}
+
+    echo 'WP downloaded and setup!'
+    echo 'TODO: setup WP cron via server cron.'
+    echo 'TODO: setup automatic update of WP core, plugins and themes.'
+}
+
+function create_nginx {
+    if [ ! -f /etc/nginx/sites-enabled/${domain}.conf ] ; then
+        cd /etc/nginx/sites-available/
+        sudo cp ssl-example.com.conf ${domain}.conf
+        sudo sed -i "s:/etc/letsencrypt/live/example.com/fullchain.pem:${fullchain_file}:" ${domain}.conf
+        sudo sed -i "s:/etc/letsencrypt/live/example.com/privkey.pem:${privkey_file}:" ${domain}.conf
+        sudo sed -i "s:example.com:${domain}:g"         ${domain}.conf
+        sudo sed -i "s:/home/username:${home_dir}:"     ${domain}.conf
+        sudo sed -i "s:/home/username:${home_dir}:g"    ${domain}.conf
+        cd /etc/nginx/sites-enabled/
+        sudo ln -s ../sites-available/${domain}.conf .
+        sudo nginx -t && sudo systemctl restart nginx
+
+        echo "Nginx vhost entry added for $domain."
+    else
+        echo 'Nginx entry already exists!'
+    fi
+}
+
+function reset_wp {
+    # required variables: $wp_path, $domain, $wp_user_name, $wp_user_pass
+    cd $wp_path
+    wp db reset --yes
+    wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
+    wp rewrite structure '/%postname%/'
+    wp option update timezone_string $timezone_string
+}
+
+# local-box -r example.com
+# local-box --reset example.com
+# ask for your confirmation (whenever you wish to reset or remove/delete)
+#reset_wp
+
+# local-box -b
+# local-box --bootstrap
+# download and run local-bootstrap.sh file from local-box repo
+bootstrap_env
+
+# local-box example.com
+# this should bootstrap the server as well.
+# display a message, if the server is not bootstrapped and it'd take sometime to complete it for the first domain!
+create_mysql
+create_ssl
+create_nginx
+install_wp
+
+# local-box -p example.com
+# to install php app
+#create_ssl
+#create_nginx
+
+# local-box -d example.com
+# local-box --delete example.com
+# to remove WP site
+#remove_nginx
+#remove_ssl
+#remove_mysql
+#remove_wp
