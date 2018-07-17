@@ -130,16 +130,28 @@ function install_wp {
 
     # ideally should be done as normal user
     cd $wp_path
+
+    # download WP core
     wp core download || { echo "Warning: WP core already seem exists! In order to force download again using the flag --force"; }
+
+    # create wp-config.php file
     [ ! -f wp-config.php ] && wp config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --dbprefix="${db_prefix}_"
+
+    # install WP
     wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
-    [ ! -f favicon.ico ] && wget https://wordpress.org/favicon.ico
+
+    # download a default favicon
+    [ ! -f favicon.ico ] && wget -q https://wordpress.org/favicon.ico
     # chown -R $user:$user $home_dir/sites/${domain}
+
+    # minor tweaks
+    wp rewrite structure '/%postname%/'
+    wp option update timezone_string $timezone_string
 
     # install plugin to auto-update everything (WP core, plugins and themes)
     mu_plugins_path="${wp_path}/wp-content/mu-plugins"
     [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
-    wget -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
+    wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
 
     # trigger WP Cron via server cron
     if ! $(crontab -l | grep -qw $domain) ; then
