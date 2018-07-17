@@ -136,9 +136,17 @@ function install_wp {
     [ ! -f favicon.ico ] && wget https://wordpress.org/favicon.ico
     # chown -R $user:$user $home_dir/sites/${domain}
 
+    # install plugin to auto-update everything (WP core, plugins and themes)
+    mu_plugins_path="${wp_path}/wp-content/mu-plugins"
+    [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
+    wget -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
+
+    # trigger WP Cron via server cron
+    if ! $(crontab -l | grep -qw $domain) ; then
+        ( crontab -l; echo; echo "0 * * * * curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
+    fi
+
     echo 'WP downloaded and setup!'
-    echo 'TODO: setup WP cron via server cron.'
-    echo 'TODO: setup automatic update of WP core, plugins and themes.'
 }
 
 function create_nginx {
