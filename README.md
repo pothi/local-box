@@ -35,6 +35,7 @@ In sync with WordPress philosophy of “[decision, not options](https://wordpres
 - Composer pre-installed.
 - Auto-update of almost everything (wp-cli, composer, certbot certs, etc).
 - Your own SSL CA.
+- PHP-Xdebug pre-installed.
 
 ## Roadmap
 
