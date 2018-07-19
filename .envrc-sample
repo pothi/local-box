@@ -53,5 +53,7 @@
 #export PHP_MAX_CHILDREN=
 #export PHP_MEM_LIMIT=
 
+export nodejsversion=10
 
+# no longer used
 #export MEMCACHED_MEM_LIMIT=

@@ -125,6 +125,15 @@ function create_mysql {
     echo 'DB created!'
 }
 
+function add_cron {
+    # requires $domain
+
+    # trigger WP Cron via server cron
+    if ! $(crontab -l | grep -qw $domain) ; then
+        ( crontab -l; echo; echo "0 * * * * curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
+    fi
+}
+
 function install_wp {
     [ ! -d ${wp_path} ] && mkdir -p $wp_path
 
@@ -153,11 +162,7 @@ function install_wp {
     [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
     wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
 
-    # trigger WP Cron via server cron
-    if ! $(crontab -l | grep -qw $domain) ; then
-        ( crontab -l; echo; echo "0 * * * * curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
-    fi
-
+    add_cron
     echo 'WP downloaded and setup!'
 }
 
