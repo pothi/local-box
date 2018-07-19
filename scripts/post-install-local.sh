@@ -23,5 +23,9 @@ do
     echo done.
 done
 
+sudo lxd init --auto
+sudo gpasswd -a $user lxd
+newgrp lxd
+
 echo -----------------------------------------------------------------------------
 echo 'Done post-install steps for local dev.'
