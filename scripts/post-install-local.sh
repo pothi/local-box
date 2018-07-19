@@ -7,8 +7,13 @@ export DEBIAN_FRONTEND=noninteractive
 echo Doing post-install steps for local env...
 echo -----------------------------------------------------------------------------
 
-required_packages="lxd \
+required_packages="keychain \
+    lxd \
+    mailutils \
     php-xdebug \
+    ruby ruby-dev zlib1g-dev \
+    screen \
+    ssh \
     vim-scripts"
 
 for package in $required_packages
