@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version: 1.3
+# Version: 2.1
 
 # to be run as root, probably as a user-script just after a server is installed
 
@@ -10,15 +10,16 @@
 # exit 1
 # fi
 
-# TODO - change the default repo, if needed - mostly not needed on most hosts
-
 # create some useful directories - create them on demand
 mkdir -p /root/{backups,git,log,scripts} &> /dev/null
 
-# logging everything
+# log everything
 log_file=/root/log/wp-in-a-box.log
 exec > >(tee -a ${log_file} )
 exec 2> >(tee -a ${log_file} >&2)
+
+# some defaults: can be changed via .envrc file
+nodejs_version=10
 
 # Defining return code check function
 check_result() {
@@ -143,6 +144,9 @@ case "$codename" in
     "xenial")
         source $local_wp_in_a_box_repo/scripts/post-install-xenial.sh
         ;;
+    "juno")
+        source $local_wp_in_a_box_repo/scripts/post-install-local.sh
+        source $local_wp_in_a_box_repo/scripts/post-install-juno.sh
     *)
         echo "Distro: $codename"
         echo 'Warning: Could not figure out the distribution codename. Skipping post-install steps!'

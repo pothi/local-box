@@ -113,7 +113,6 @@ if [ "$php_version" = "7.2" ] ; then
 fi
 
 apt-get install -qq ${PHP_PACKAGES} &> /dev/null
-apt-get install -qq php-xdebug &> /dev/null
 
 # let's take a backup of config before modifing them
 BACKUP_PHP_DIR="/root/backups/etc-php-$(date +%F)"

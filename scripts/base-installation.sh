@@ -16,11 +16,10 @@ required_packages="acl \
     pwgen \
     fail2ban \
     python-setuptools \
-    bc \
-    lxd"
+    bc"
 
 for package in $required_packages
-do  
+do
     printf '%-72s' "Installing ${package}..."
     apt-get -qq install $package &> /dev/null
     echo done.
