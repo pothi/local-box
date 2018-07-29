@@ -11,6 +11,7 @@ required_packages="keychain \
     lxd \
     mailutils \
     net-tools \
+    nmap \
     php-xdebug \
     ruby ruby-dev zlib1g-dev \
     screen \
