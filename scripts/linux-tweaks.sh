@@ -111,7 +111,7 @@ mkdir /root/.vim &> /dev/null
 cp /etc/skel/.vimrc /root/
 
 # Vim related configs
-VIM_VERSION=$(/usr/bin/vim --version | head -1 | awk {'print $5'} | tr -d .)
+VIM_VERSION=$(/usr/bin/vi --version | head -1 | awk {'print $5'} | tr -d .)
 cp $local_wp_in_a_box_repo/config/vimrc.local /etc/vim/
 cp -a $local_wp_in_a_box_repo/config/vim/* /usr/share/vim/vim${VIM_VERSION}/
 sed -i "s/VIM_VERSION/$VIM_VERSION/g" /etc/vim/vimrc.local
