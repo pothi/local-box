@@ -55,25 +55,22 @@ apt install curl screen -y
 # curl -LO https://github.com/pothi/local-dev-box/raw/master/.envrc-sample
 cp .envrc-sample .envrc
 nano .envrc
-# enter at least the following values
-# SFTP_USER
-# BASE_NAME
 
 # then create the directories and files that are from /etc/skell for the user 'pothi' (or whoever)
 
 # download the bootstrap script
-curl -LO https://github.com/pothi/local-dev-box/raw/master/local-dev-box-bootstrap.sh
+curl -LO https://raw.githubusercontent.com/pothi/local-box/master/bootstrap-local-box.sh
 
 # please do not trust any script on the internet or github
 # so, please go through it!
-nano ~/local-bootstrap.sh
+nano ~/bootstrap-local-box.sh
 
 # execute it and wait for some time
-# screen bash local-dev-box-bootstrap.sh
+# screen bash bootstrap-local-box.sh
 # or simply
-bash local-dev-box-bootstrap.sh
+bash bootstrap-local-box.sh
 
-rm local-dev-box-bootstrap.sh
+rm bootstrap-local-box.sh
 
 ```
 
