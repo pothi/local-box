@@ -112,7 +112,7 @@ source $local_wp_in_a_box_repo/scripts/nginx-installation.sh
 echo
 source $local_wp_in_a_box_repo/scripts/mysql-installation.sh
 echo
-# source $local_wp_in_a_box_repo/scripts/sftp-user-creation.sh
+source $local_wp_in_a_box_repo/scripts/sftp-user-creation.sh
 # echo
 source $local_wp_in_a_box_repo/scripts/php-installation.sh
 echo

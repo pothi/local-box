@@ -34,7 +34,10 @@ function bootstrap_env {
 
     [ -z "$user" ] && user=$USER
     [ -z "$home_dir" ] && home_dir=$HOME
-    [ -z "$ssl_dir" ] && echo "SSL directory is empty - haven't you setup your own SSL Certificate Authority, yet?"
+    [ -z "$ssl_dir" ] && {
+        echo "SSL directory is empty - haven't you setup your own SSL Certificate Authority, yet?"
+        exit
+    }
 
     # setup WordPress user name
     [ -z "$wp_user_name" ] && {
@@ -90,7 +93,7 @@ function create_ssl {
                 -out $csr_file \
                 -key ${privkey_file} \
                 -config ${ssl_dir}/openssl.cnf \
-                -subj '/C=IN/ST=Tamil Nadu/L=Srivilliputhur/O=Tiny WP/CN=Juno'
+                -subj '/C=IN/ST=Tamil Nadu/L=Srivilliputhur/O=Tiny WP/CN=Local'
         fi
 
         # create the full SSL certificate
@@ -191,7 +194,7 @@ function reset_wp {
     wp db reset --yes
     wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
     wp rewrite structure '/%postname%/'
-    wp option update timezone_string $timezone_string
+    [ -z "$timezone_string" ] && wp option update timezone_string $timezone_string
 }
 
 # local-box -r example.com
