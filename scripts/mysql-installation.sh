@@ -11,7 +11,7 @@ apt-get install ${sql_server} -qq &> /dev/null
 
 systemctl stop mysql
 # enable slow log and other tweaks
-cp $local_wp_in_a_box_repo/config/mariadb.conf.d/*.cnf /etc/mysql/mariadb.conf.d/
+cp $local_box_repo/config/mariadb.conf.d/*.cnf /etc/mysql/mariadb.conf.d/
 systemctl start mysql
 
 source /root/.envrc

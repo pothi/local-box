@@ -82,52 +82,52 @@ apt-get -qq autoremove &> /dev/null
 echo done.
 echo
 
-if [ -z "$local_wp_in_a_box_repo" ] ; then
-    local_wp_in_a_box_repo=/root/git/wp-in-a-box
-    echo "export local_wp_in_a_box_repo=$local_wp_in_a_box_repo" >> /root/.envrc
+if [ -z "$local_box_repo" ] ; then
+    local_box_repo=/root/git/wp-in-a-box
+    echo "export local_box_repo=$local_box_repo" >> /root/.envrc
 fi
 
 printf '%-72s' "Fetching wp-in-a-box repo..."
-if [ -d $local_wp_in_a_box_repo ] ; then
-    cd $local_wp_in_a_box_repo
+if [ -d $local_box_repo ] ; then
+    cd $local_box_repo
     git pull -q origin local &> /dev/null
     git pull -q --recurse-submodules &> /dev/null
     cd - &> /dev/null
 else
-    git clone -q --recursive https://github.com/pothi/wp-in-a-box $local_wp_in_a_box_repo &> /dev/null
+    git clone -q --recursive https://github.com/pothi/wp-in-a-box $local_box_repo &> /dev/null
     git checkout local &> /dev/null
 fi
 echo done.
 
 # create swap at first
-# source $local_wp_in_a_box_repo/scripts/swap.sh
+# source $local_box_repo/scripts/swap.sh
 # echo
-source $local_wp_in_a_box_repo/scripts/base-installation.sh
+source $local_box_repo/scripts/base-installation.sh
 echo
-source $local_wp_in_a_box_repo/scripts/email-mta-installation.sh
+source $local_box_repo/scripts/email-mta-installation.sh
 echo
-source $local_wp_in_a_box_repo/scripts/linux-tweaks.sh
+source $local_box_repo/scripts/linux-tweaks.sh
 echo
-source $local_wp_in_a_box_repo/scripts/nginx-installation.sh
+source $local_box_repo/scripts/nginx-installation.sh
 echo
-source $local_wp_in_a_box_repo/scripts/mysql-installation.sh
+source $local_box_repo/scripts/mysql-installation.sh
 echo
-source $local_wp_in_a_box_repo/scripts/sftp-user-creation.sh
+source $local_box_repo/scripts/sftp-user-creation.sh
 # echo
-source $local_wp_in_a_box_repo/scripts/php-installation.sh
+source $local_box_repo/scripts/php-installation.sh
 echo
 
 # depends on mysql & php installation
-source $local_wp_in_a_box_repo/scripts/pma-installation.sh
+source $local_box_repo/scripts/pma-installation.sh
 echo
-source $local_wp_in_a_box_repo/scripts/redis.sh
+source $local_box_repo/scripts/redis.sh
 echo
 
 # the following can be executed at any order as they are mostly optional
-# source $local_wp_in_a_box_repo/scripts/install-firewall.sh
-# source $local_wp_in_a_box_repo/scripts/ssh-user-creation.sh
+# source $local_box_repo/scripts/install-firewall.sh
+# source $local_box_repo/scripts/ssh-user-creation.sh
 # echo
-# source $local_wp_in_a_box_repo/scripts/optional.sh
+# source $local_box_repo/scripts/optional.sh
 
 # post-install steps
 codename=`lsb_release -c -s`
@@ -136,17 +136,17 @@ if [ "$codename" == "juno" ]; then
 fi
 case "$codename" in
     "bionic")
-        source $local_wp_in_a_box_repo/scripts/post-install-bionic.sh
+        source $local_box_repo/scripts/post-install-bionic.sh
         ;;
     "stretch")
-        source $local_wp_in_a_box_repo/scripts/post-install-stretch.sh
+        source $local_box_repo/scripts/post-install-stretch.sh
         ;;
     "xenial")
-        source $local_wp_in_a_box_repo/scripts/post-install-xenial.sh
+        source $local_box_repo/scripts/post-install-xenial.sh
         ;;
     "juno")
-        source $local_wp_in_a_box_repo/scripts/post-install-local.sh
-        source $local_wp_in_a_box_repo/scripts/post-install-juno.sh
+        source $local_box_repo/scripts/post-install-local.sh
+        source $local_box_repo/scripts/post-install-juno.sh
     *)
         echo "Distro: $codename"
         echo 'Warning: Could not figure out the distribution codename. Skipping post-install steps!'

@@ -6,9 +6,9 @@ source /root/.envrc
 [ ! -d ~/.config/bash ] && mkdir -p ~/.config/bash
 
 # Common shell related configs for root user
-cp $local_wp_in_a_box_repo/config/checks.sh ~/.config/
-cp $local_wp_in_a_box_repo/config/common-aliases.sh ~/.config/bash/
-cp $local_wp_in_a_box_repo/config/common-exports.sh ~/.config/bash/
+cp $local_box_repo/config/checks.sh ~/.config/
+cp $local_box_repo/config/common-aliases.sh ~/.config/bash/
+cp $local_box_repo/config/common-exports.sh ~/.config/bash/
 source ~/.config/checks.sh
 source ~/.config/bash/common-aliases.sh
 source ~/.config/bash/common-exports.sh
@@ -38,9 +38,9 @@ touch /etc/skel/{.bash_history,.npmrc,.yarnrc,mbox}
 chmod 600 /etc/skel/mbox &> /dev/null
 
 mkdir /etc/skel/.config &> /dev/null
-cp $local_wp_in_a_box_repo/config/checks.sh /etc/skel/.config/
-cp $local_wp_in_a_box_repo/config/common-aliases.sh /etc/skel/.config/bash/
-cp $local_wp_in_a_box_repo/config/common-exports.sh /etc/skel/.config/bash/
+cp $local_box_repo/config/checks.sh /etc/skel/.config/
+cp $local_box_repo/config/common-aliases.sh /etc/skel/.config/bash/
+cp $local_box_repo/config/common-exports.sh /etc/skel/.config/bash/
 
 # download scripts to backup wordpress
 if [ ! -s /etc/skel/scripts/full-backup.sh ]; then
@@ -112,12 +112,12 @@ cp /etc/skel/.vimrc /root/
 
 # Vim related configs
 VIM_VERSION=$(/usr/bin/vi --version | head -1 | awk {'print $5'} | tr -d .)
-cp $local_wp_in_a_box_repo/config/vimrc.local /etc/vim/
-cp -a $local_wp_in_a_box_repo/config/vim/* /usr/share/vim/vim${VIM_VERSION}/
+cp $local_box_repo/config/vimrc.local /etc/vim/
+cp -a $local_box_repo/config/vim/* /usr/share/vim/vim${VIM_VERSION}/
 sed -i "s/VIM_VERSION/$VIM_VERSION/g" /etc/vim/vimrc.local
 
 # Clean up
-# rm -rf $local_wp_in_a_box_repo/
+# rm -rf $local_box_repo/
 
 #--- Tweak SSH config ---#
 

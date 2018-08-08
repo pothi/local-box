@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ~/.envrc
+
 export PMA_USER=pma
 export PMA_HOME=/var/www/pma
 export PMA_ENV=${PMA_HOME}/.envrc
@@ -23,7 +25,7 @@ fi
 mysql -e "CREATE DATABASE phpmyadmin" &> /dev/null
 mysql -e "GRANT ALL PRIVILEGES ON phpmyadmin.* TO $pma_db_user@localhost IDENTIFIED BY '$pma_db_pass'" &> /dev/null
 
-cd $local_wp_in_a_box_repo/scripts/ &> /dev/null
+cd $local_box_repo/scripts/ &> /dev/null
 sudo -H -u $PMA_USER bash pma-user-creation.sh
 cd - &> /dev/null
 

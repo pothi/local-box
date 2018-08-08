@@ -209,7 +209,7 @@ sed -i '/^process_control_timeout/ s/=.*$/= 10s/' $FPMCONF
 
 # tweaking opcache
 # echo Tweaking opcache...
-cp $local_wp_in_a_box_repo/config/php/mods-available/custom-opcache.ini /etc/php/${php_version}/mods-available
+cp $local_box_repo/config/php/mods-available/custom-opcache.ini /etc/php/${php_version}/mods-available
 ln -s /etc/php/${php_version}/mods-available/custom-opcache.ini /etc/php/${php_version}/fpm/conf.d/99-custom-opcache.ini &> /dev/null
 ln -s /etc/php/${php_version}/mods-available/custom-opcache.ini /etc/php/${php_version}/cli/conf.d/99-custom-opcache.ini &> /dev/null
 
