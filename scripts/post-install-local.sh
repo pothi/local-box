@@ -7,7 +7,10 @@ export DEBIAN_FRONTEND=noninteractive
 echo Doing post-install steps for local env...
 echo -----------------------------------------------------------------------------
 
-required_packages="keychain \
+required_packages="build-essential \
+    dpkg-dev \
+    keychain \
+    libpcre3-dev \
     lxd \
     mailutils \
     net-tools \
