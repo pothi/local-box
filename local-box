@@ -116,9 +116,10 @@ function create_ssl {
     sudo $(which sed) -i "s/$domain/example.com/g" ${ssl_dir}/openssl.cnf
 
     # finally insert an entry in /etc/hosts file
-    [ grep -w $domain /etc/hosts &> /dev/null ] && sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
+    [ grep -w $domain /etc/hosts &> /dev/null ] !! sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
 
     echo 'SSL created!'
+    echo 'Hosts file entry is updated!'
 }
 
 function create_mysql {
@@ -133,7 +134,8 @@ function add_cron {
 
     # trigger WP Cron via server cron
     if ! $(crontab -l | grep -qw $domain) ; then
-        ( crontab -l; echo; echo "0 * * * * curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
+        # ( crontab -l; echo; echo "0 * * * * curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
+        ( crontab -l; echo "@hourly curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
     fi
 }
 
@@ -158,7 +160,7 @@ function install_wp {
 
     # minor tweaks
     wp rewrite structure '/%postname%/'
-    wp option update timezone_string $timezone_string
+    [ -z "$timezone_string" ] && wp option update timezone_string $timezone_string
 
     # install plugin to auto-update everything (WP core, plugins and themes)
     mu_plugins_path="${wp_path}/wp-content/mu-plugins"
@@ -210,10 +212,10 @@ bootstrap_env
 # local-box example.com
 # this should bootstrap the server as well.
 # display a message, if the server is not bootstrapped and it'd take sometime to complete it for the first domain!
-create_mysql
-create_ssl
-create_nginx
-install_wp
+# create_mysql
+# create_ssl
+# create_nginx
+# install_wp
 
 # local-box -p example.com
 # to install php app
@@ -223,7 +225,34 @@ install_wp
 # local-box -d example.com
 # local-box --delete example.com
 # to remove WP site
-#remove_nginx
-#remove_ssl
-#remove_mysql
-#remove_wp
+function remove_nginx {
+    [ -f /etc/nginx/sites-enabled/${domain}.conf ]      && sudo rm /etc/nginx/sites-enabled/${domain}.conf
+    [ -f /etc/nginx/sites-available/${domain}.conf ]    && sudo rm /etc/nginx/sites-available/${domain}.conf
+    sudo nginx -t && sudo systemctl restart nginx
+
+    echo "Nginx vhost entry removed for $domain."
+}
+# remove_nginx
+function remove_ssl {
+    [ -d "${ssl_dir}/domains/${domain}" ] && sudo rm -rf ${ssl_dir}/domains/${domain}
+    echo "SSL certificates are removed for $domain."
+    sudo sed -i "/$domain/d" /etc/hosts
+    echo "Hosts file entry is removed for $domain."
+}
+# remove_ssl
+function remove_mysql {
+    sudo mysql -e "DROP DATABASE IF EXISTS $db_name"
+    sudo mysql -e "DROP USER IF EXISTS ${db_user}@localhost"
+    echo "MySQL database and user are removed for $domain."
+}
+# remove_mysql
+function remove_wp {
+    [ -d $home_dir/sites/${domain} ] && rm -rf $home_dir/sites/${domain}
+    echo "WP files are removed for $domain."
+
+    if $(crontab -l | grep -qw $domain) ; then
+        crontab -l | grep -v $domain | crontab -
+    fi
+    echo "Cron entry is removed for $domain."
+}
+# remove_wp
