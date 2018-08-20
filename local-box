@@ -12,12 +12,89 @@ set -o errexit -o pipefail -o noclobber -o nounset
 # download WP and create wp-config.php
 # add cron entry to trigger WP cron (hourly)
 
+! getopt --test > /dev/null
+if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+    echo "I’m sorry, `getopt --test` failed in this environment."
+    echo "If you are on a mac, you may use `port install getopt` to get the latest version of getopt that supports long arguments!"
+    exit 1
+fi
+
+OPTIONS=hdrp
+LONGOPTS=help,delete,reset,php
+
+# -use ! and PIPESTATUS to get exit code with errexit set
+# -temporarily store output to be able to check for errors
+# -activate quoting/enhanced mode (e.g. by writing out “--options”)
+# -pass arguments only via   -- "$@"   to separate them correctly
+! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
+if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    # e.g. return value is 1
+    #  then getopt has complained about wrong arguments to stdout
+    exit 2
+fi
+# read getopt’s output this way to handle the quoting right:
+eval set -- "$PARSED"
+
+help() {
+    echo "
+    Usage $0 [options] example.com
+
+    Options:
+    -h, --help          Print this help
+    -d, --delete        Delete everything related to the domain
+    -r, --reset         Reset WordPress database
+    -p, --php           Create PHP website
+    "
+
+    exit 4;
+}
+
+new_wp_site=y delete_site=n reset_site=n php_site=n
+# now enjoy the options in order and nicely split until we see --
+while true; do
+    case "$1" in
+        -h|--help)
+            help
+            shift
+            ;;
+        -d|--delete)
+            new_wp_site=n
+            delete_site=y
+            shift
+            ;;
+        -p|--php)
+            new_wp_site=n
+            reset_site=y
+            shift
+            ;;
+        -r|--reset)
+            new_wp_site=n
+            php_site=y
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Programming error"
+            exit 3
+            ;;
+    esac
+done
+
 # if number of arguments equals to zero
-if [ "$#" -eq 0 ] ; then
-    echo "Usage $0 example.com"; exit 1;
+if [ "$#" -ne 1 ] ; then
+    help
 fi
 
 domain=$1
+
+echo "New WP Site: $new_wp_site
+Delete Site: $delete_site
+PHP Site: $php_site
+Reset WP Site: $reset_site
+Domain: $domain"
 
 tld=$(echo $domain | awk -F '.' '{print $1}')
 db_name=${tld}_db
@@ -115,7 +192,7 @@ function create_ssl {
     sudo $(which sed) -i "s/$domain/example.com/g" ${ssl_dir}/openssl.cnf
 
     # finally insert an entry in /etc/hosts file
-    [ grep -w $domain /etc/hosts &> /dev/null ] !! sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
+    [ grep -w $domain /etc/hosts &> /dev/null ] || sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
 
     echo 'SSL created!'
     echo 'Hosts file entry is updated!'
@@ -242,7 +319,7 @@ function remove_cron {
 # local-box -b
 # local-box --bootstrap
 # download and run local-bootstrap.sh file from local-box repo
-bootstrap_env
+# bootstrap_env
 
 # local-box example.com
 # this should bootstrap the server as well.
@@ -254,6 +331,7 @@ bootstrap_env
 
 # local-box -p example.com
 # to install php app
+# bootstrap_env
 #create_ssl
 #create_nginx
 
@@ -267,3 +345,31 @@ bootstrap_env
 # remove_mysql
 # remove_wp
 # remove_cron
+
+bootstrap_env
+
+if [ "$new_wp_site" == "y" ] ; then
+    # set -x
+    create_mysql
+    create_ssl
+    create_nginx
+    install_wp
+fi
+
+if [ "$delete_site" == "y" ] ; then
+    remove_nginx
+    remove_ssl
+    remove_hosts_file_entry
+    remove_mysql
+    remove_wp
+    remove_cron
+fi
+
+if [ "$php_site" == "y" ] ; then
+    create_ssl
+    create_nginx
+fi
+
+if [ "$reset_site" == "y" ] ; then
+    reset_wp
+fi
