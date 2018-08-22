@@ -19,8 +19,8 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     exit 1
 fi
 
-OPTIONS=hdrp
-LONGOPTS=help,delete,reset,php
+OPTIONS=hdrps
+LONGOPTS=help,delete,reset,php,static
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -44,12 +44,13 @@ help() {
     -d, --delete        Delete everything related to the domain
     -r, --reset         Reset WordPress database
     -p, --php           Create PHP website
+    -s, --static        Create Static website
     "
 
     exit 4;
 }
 
-new_wp_site=y delete_site=n reset_site=n php_site=n
+new_wp_site=y delete_site=n reset_site=n php_site=n static_site=n
 # now enjoy the options in order and nicely split until we see --
 while true; do
     case "$1" in
@@ -64,12 +65,17 @@ while true; do
             ;;
         -p|--php)
             new_wp_site=n
-            reset_site=y
+            php_site=y
             shift
             ;;
         -r|--reset)
             new_wp_site=n
-            php_site=y
+            reset_site=y
+            shift
+            ;;
+        -s|--static)
+            new_wp_site=n
+            static_site=y
             shift
             ;;
         --)
@@ -89,12 +95,6 @@ if [ "$#" -ne 1 ] ; then
 fi
 
 domain=$1
-
-echo "New WP Site: $new_wp_site
-Delete Site: $delete_site
-PHP Site: $php_site
-Reset WP Site: $reset_site
-Domain: $domain"
 
 tld=$(echo $domain | awk -F '.' '{print $1}')
 db_name=${tld}_db
@@ -130,13 +130,19 @@ function bootstrap_env {
     # echo $wp_user_name
     # echo $wp_user_pass
 
-    # initialize wp_path that is based on home_dir value
-    wp_path=$home_dir/sites/${domain}/public
+    # initialize site_path that is based on home_dir value
+    site_path=$home_dir/sites/${domain}/public
+    parent_site_path=$home_dir/sites/${domain}
+
+    wp_config_file=
+
+    [ -f ${site_path}/wp-config.php ] && wp_config_file=${site_path}/wp-config.php
+    [ -f ${parent_site_path}/wp-config.php ] && wp_config_file=${parent_site_path}/wp-config.php
 
     # get the DB password and prefix, if wp-config.php already exists.
-    if [ -f ${wp_path}/wp-config.php ] ; then
-        db_pass=`$(which sed) "s/[()',;]/ /g" ${wp_path}/wp-config.php | $(which grep) DB_PASSWORD | $(which awk) '{print $3}'`
-        db_prefix=`$(which sed) "s/[()',;]/ /g" ${wp_path}/wp-config.php | $(which grep) '^\$table_prefix' | $(which awk) '{print $3}'`
+    if [ ! -z ${wp_config_file} ] ; then
+        db_pass=`$(which sed) "s/[()',;]/ /g" ${wp_config_file} | $(which grep) DB_PASSWORD | $(which awk) '{print $3}'`
+        db_prefix=`$(which sed) "s/[()',;]/ /g" ${wp_config_file} | $(which grep) '^\$table_prefix' | $(which awk) '{print $3}'`
     else
         db_pass=$(pwgen -cnsv 20 1)
         db_prefix=$(pwgen -A 2 1)
@@ -192,7 +198,7 @@ function create_ssl {
     sudo $(which sed) -i "s/$domain/example.com/g" ${ssl_dir}/openssl.cnf
 
     # finally insert an entry in /etc/hosts file
-    [ grep -w $domain /etc/hosts &> /dev/null ] || sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
+    grep -qw $domain /etc/hosts || sudo ex -sc "1i|127.0.0.1 $domain www.$domain" -cx /etc/hosts
 
     echo 'SSL created!'
     echo 'Hosts file entry is updated!'
@@ -210,22 +216,23 @@ function add_cron {
 
     # trigger WP Cron via server cron
     if ! $(crontab -l | grep -qw $domain) ; then
-        # ( crontab -l; echo; echo "0 * * * * curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
         ( crontab -l; echo "@hourly curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
     fi
 }
 
 function install_wp {
-    [ ! -d ${wp_path} ] && mkdir -p $wp_path
+    [ ! -d ${site_path} ] && mkdir -p $site_path
 
     # ideally should be done as normal user
-    cd $wp_path
+    cd $site_path
 
     # download WP core
     wp core download || { echo "Warning: WP core already seem exists! In order to force download again using the flag --force"; }
 
     # create wp-config.php file
-    [ ! -f wp-config.php ] && wp config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --dbprefix="${db_prefix}_"
+    [ -z ${wp_config_file} ] && wp config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --dbprefix="${db_prefix}_"
+    mv wp-config.php ${parent_site_path}/
+    wp_config_file=${parent_site_path}/wp-config.php
 
     # install WP
     wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
@@ -239,12 +246,48 @@ function install_wp {
     [ -z "$timezone_string" ] && wp option update timezone_string $timezone_string
 
     # install plugin to auto-update everything (WP core, plugins and themes)
-    mu_plugins_path="${wp_path}/wp-content/mu-plugins"
+    mu_plugins_path="${site_path}/wp-content/mu-plugins"
     [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
     wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
 
     add_cron
     echo 'WP downloaded and setup!'
+}
+
+create_php() {
+    [ ! -d ${site_path} ] && mkdir -p $site_path
+    conf_file=${parent_site_path}/db.conf
+    [ ! -f $conf_file ] && {
+        touch $conf_file
+        echo "export db_name=$db_name" >> ${parent_site_path}/db.conf
+        echo "export db_user=$db_user" >> ${parent_site_path}/db.conf
+        echo "export db_pass=$db_pass" >> ${parent_site_path}/db.conf
+    }
+
+    echo "PHP site created. Find the DB credentials at $conf_file."
+}
+
+create_static() {
+    [ ! -d ${site_path} ] && mkdir -p $site_path
+
+    if [ ! -f /etc/nginx/sites-enabled/${domain}.conf ] ; then
+        cd /etc/nginx/sites-available/
+        sudo cp static-site.conf ${domain}.conf
+        sudo sed -i "s:/etc/letsencrypt/live/example.com/fullchain.pem:${fullchain_file}:" ${domain}.conf
+        sudo sed -i "s:/etc/letsencrypt/live/example.com/privkey.pem:${privkey_file}:" ${domain}.conf
+        sudo sed -i "s:example.com:${domain}:g"         ${domain}.conf
+        sudo sed -i "s:/home/username:${home_dir}:"     ${domain}.conf
+        sudo sed -i "s:/home/username:${home_dir}:g"    ${domain}.conf
+        cd /etc/nginx/sites-enabled/
+        sudo ln -s ../sites-available/${domain}.conf .
+        sudo nginx -t && sudo systemctl restart nginx
+
+        echo "Nginx vhost entry added for $domain."
+    else
+        echo 'Nginx entry already exists!'
+    fi
+
+    echo 'Static site created!'
 }
 
 function create_nginx {
@@ -267,12 +310,16 @@ function create_nginx {
 }
 
 function reset_wp {
-    # required variables: $wp_path, $domain, $wp_user_name, $wp_user_pass
-    cd $wp_path
-    wp db reset --yes
-    wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
-    wp rewrite structure '/%postname%/'
-    [ -z "$timezone_string" ] && wp option update timezone_string $timezone_string
+    # required variables: $site_path, $domain, $wp_user_name, $wp_user_pass
+    cd $site_path
+    if [ ! -z $wp_config_file ] ; then
+        wp db reset --yes
+        wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
+        wp rewrite structure '/%postname%/'
+        [ -z "$timezone_string" ] && wp option update timezone_string $timezone_string
+    else
+        echo 'WordPress not found. We can only reset WordPress sites. Did you mean to delete the site?'
+    fi
 }
 
 function remove_nginx {
@@ -300,7 +347,7 @@ function remove_mysql {
 }
 
 function remove_wp {
-    [ -d $home_dir/sites/${domain} ] && rm -rf $home_dir/sites/${domain}
+    [ -d ${parent_site_path} ] && rm -rf ${parent_site_path}
     echo "WP files are removed for $domain."
 }
 
@@ -366,10 +413,17 @@ if [ "$delete_site" == "y" ] ; then
 fi
 
 if [ "$php_site" == "y" ] ; then
+    create_mysql
     create_ssl
     create_nginx
+    create_php
 fi
 
 if [ "$reset_site" == "y" ] ; then
     reset_wp
+fi
+
+if [ "$static_site" == "y" ] ; then
+    create_ssl
+    create_static
 fi
