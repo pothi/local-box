@@ -132,6 +132,7 @@ function bootstrap_env {
 
     # initialize site_path that is based on home_dir value
     site_path=$home_dir/sites/${domain}/public
+    [ ! -d $site_path ] && mkdir -p ${site_path}
     parent_site_path=$home_dir/sites/${domain}
 
     wp_config_file=

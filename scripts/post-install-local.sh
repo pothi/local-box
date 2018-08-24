@@ -32,5 +32,19 @@ sudo lxd init --auto
 sudo gpasswd -a $user lxd
 newgrp lxd
 
+# Yarn installation
+printf '%-72s' "Installing ${package}..."
+[ -f pubkey.gpg ] && rm pubkey.gpg
+curl -LSsO https://dl.yarnpkg.com/debian/pubkey.gpg
+check_result $? 'Yarn key could not be downloaded!'
+apt-key add pubkey.gpg &> /dev/null
+check_result $? 'Yarn key could not be added!'
+rm pubkey.gpg
+
+echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+apt-get -qq update
+apt-get -qq install yarn
+echo done.
+
 echo -----------------------------------------------------------------------------
 echo 'Done post-install steps for local dev.'
