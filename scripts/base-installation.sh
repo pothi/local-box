@@ -171,4 +171,4 @@ systemctl restart syslog
 systemctl restart cron
 
 # limit journal log size
-sed -i -e '/SystemMaxUse/ s/.*/SystemMaxUse = '$journal_log_size'/' /etc/systemd/journald.conf
+sed -i -e '/SystemMaxUse/ s/.*/SystemMaxUse='$journal_log_size'/' /etc/systemd/journald.conf
