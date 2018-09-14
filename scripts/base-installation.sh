@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# variables
+journal_log_size=100M
+
 export DEBIAN_FRONTEND=noninteractive
 
 #--- Install pre-requisites ---#
@@ -166,3 +169,6 @@ sed -i -e 's/^#cron.*/cron.*/' /etc/rsyslog.conf
 sed -i -e 's/^#EXTRA_OPTS=""$/EXTRA_OPTS=""/' -e 's/^EXTRA_OPTS=""$/EXTRA_OPTS="-L 0"/' /etc/default/cron
 systemctl restart syslog
 systemctl restart cron
+
+# limit journal log size
+sed -i -e '/SystemMaxUse/ s/.*/SystemMaxUse = '$journal_log_size'/' /etc/systemd/journald.conf
