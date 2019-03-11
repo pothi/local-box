@@ -218,6 +218,7 @@ function add_cron {
     # trigger WP Cron via server cron
     if ! $(crontab -l | grep -qw $domain) ; then
         ( crontab -l; echo "@hourly curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
+        ( crontab -l; echo "@hourly /usr/local/bin/wp --path=~/sites/$domain/public cron event run --due-now &> /dev/null" ) | crontab -
     fi
 }
 
