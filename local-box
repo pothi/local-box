@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# version 1.0
+# date: 2020-04-16
+# changelog
+# version: 1.0
+#   - extend_ssl added.
+
 # some strict rules for better coding practices!
 set -o errexit -o pipefail -o noclobber -o nounset
 
@@ -19,8 +25,8 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     exit 1
 fi
 
-OPTIONS=hdrps
-LONGOPTS=help,delete,reset,php,static
+OPTIONS=hdrpse
+LONGOPTS=help,delete,reset,php,static,extend
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -45,6 +51,7 @@ help() {
     -r, --reset         Reset WordPress database
     -p, --php           Create PHP website
     -s, --static        Create Static website
+    -e, --extend        Extend SSL certificate expiry
     "
 
     exit 4;
@@ -76,6 +83,12 @@ while true; do
         -s|--static)
             new_wp_site=n
             static_site=y
+            shift
+            ;;
+        -e|--extend)
+            new_wp_site=n
+            static_site=n
+            extend_ssl=y
             shift
             ;;
         --)
@@ -153,7 +166,7 @@ function bootstrap_env {
     privkey_file=${ssl_dir}/domains/$domain/privkey.pem
     fullchain_file=${ssl_dir}/domains/${domain}/fullchain.pem
 
-    echo 'Env bootstrap done!'
+    echo; echo Env bootstrap done!; echo
 }
 
 function create_ssl {
@@ -180,13 +193,16 @@ function create_ssl {
         fi
 
         # create the full SSL certificate
+        # max time for SSL certificate
+            # 825 is global limit
+            # 397 is chrome limit
         sudo openssl x509 -req \
             -in $csr_file \
             -CA ${ssl_dir}/rootCA.pem \
             -CAkey ${ssl_dir}/rootCA.key \
             -CAcreateserial \
             -out $fullchain_file \
-            -days 3650 \
+            -days 397 \
             -sha256 \
             -extensions v3_req \
             -extfile ${ssl_dir}/openssl.cnf
@@ -203,6 +219,60 @@ function create_ssl {
 
     echo 'SSL created!'
     echo 'Hosts file entry is updated!'
+}
+
+function extend_ssl {
+    # let's keep the domain SSL certificates in its own directory
+    if [ ! -d "${ssl_dir}/domains/${domain}" ] ; then
+        sudo mkdir -p ${ssl_dir}/domains/${domain}
+    else
+        sudo rm ${ssl_dir}/domains/${domain}/*.pem
+    fi
+
+    # change the default domain name
+    sudo $(which sed) -i "s/example.com/$domain/g" ${ssl_dir}/openssl.cnf
+
+    # create CSR and then the SSL certificate
+    if [ ! -f $privkey_file ]; then
+        # create private key
+        sudo openssl genrsa -out ${privkey_file}
+    fi
+
+    if [ ! -f $fullchain_file ]; then
+        if [ ! -f $csr_file ] ; then
+            # create CSR from private key, if not exists
+            sudo openssl req -new \
+                -out $csr_file \
+                -key ${privkey_file} \
+                -config ${ssl_dir}/openssl.cnf \
+                -subj '/C=IN/ST=Tamil Nadu/L=Srivilliputhur/O=Tiny WP/CN=Local'
+        fi
+
+        # create the full SSL certificate
+        # max time for SSL certificate
+            # 825 is global limit
+            # 397 is chrome limit
+        sudo openssl x509 -req \
+            -in $csr_file \
+            -CA ${ssl_dir}/rootCA.pem \
+            -CAkey ${ssl_dir}/rootCA.key \
+            -CAcreateserial \
+            -out $fullchain_file \
+            -days 397 \
+            -sha256 \
+            -extensions v3_req \
+            -extfile ${ssl_dir}/openssl.cnf
+    fi
+
+    # it's safe to remove CSR
+    [ -f $csr_file ] && sudo rm $csr_file
+
+    # change back to default domain name for reuse!
+    sudo $(which sed) -i "s/$domain/example.com/g" ${ssl_dir}/openssl.cnf
+
+    sudo nginx -t && sudo systemctl restart nginx
+
+    echo; echo SSL re-issued!; echo
 }
 
 function create_mysql {
@@ -429,3 +499,9 @@ if [ "$static_site" == "y" ] ; then
     create_ssl
     create_static
 fi
+
+if [ "$extend_ssl" == "y" ] ; then
+    # create_ssl
+    extend_ssl
+fi
+
