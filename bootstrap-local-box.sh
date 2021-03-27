@@ -124,9 +124,6 @@ source $local_box_repo/scripts/redis.sh
 echo
 
 # the following can be executed at any order as they are mostly optional
-# source $local_box_repo/scripts/install-firewall.sh
-# source $local_box_repo/scripts/ssh-user-creation.sh
-# echo
 # source $local_box_repo/scripts/optional.sh
 
 # post-install steps
