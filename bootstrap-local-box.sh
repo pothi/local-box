@@ -2,16 +2,13 @@
 
 # Version: 2.1
 
-# to be run as root, probably as a user-script just after a server is installed
+# to be run as user with sudo privilege, probably as a user-script just after a server is installed
 
 # as root
 # if [[ $USER != "root" ]]; then
 # echo "This script must be run as root"
 # exit 1
 # fi
-
-# create some useful directories - create them on demand
-mkdir -p /root/{backups,git,log,scripts} &> /dev/null
 
 # log everything
 log_file=/root/log/wp-in-a-box.log
@@ -20,6 +17,10 @@ exec 2> >(tee -a ${log_file} >&2)
 
 # some defaults: can be changed via .envrc file
 nodejs_version=10
+
+# create some useful directories - create them on demand
+mkdir -p ~/Dropbox/backups/$(hostname)/${USER}/{crontabs,ssh,scripts}
+sudo bash -c 'mkdir -p /root/{backups,git,log,scripts,tmp}'
 
 # Defining return code check function
 check_result() {
