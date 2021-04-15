@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-# version 2.0
+# version 2.1
 # changelog
+# version: 2.1
+#   - date: 2020-04-15
+#   - compatibility for dev user
 # version: 2.0
 #   - date: 2020-04-14
 #   - replace all SSL with mkcert
@@ -16,7 +19,6 @@ set -o errexit -o pipefail -o noclobber -o nounset
 # to be run as a normal user with password-less sudo privileges
 
 # create SSL
-# insert an entry in /etc/hosts
 # create MySQL DB, User, Pass
 # create Nginx config
 # download WP and create wp-config.php
@@ -165,9 +167,9 @@ function bootstrap_env {
 }
 
 function create_mysql {
-    sudo mysql -e "CREATE DATABASE IF NOT EXISTS $db_name"
-    sudo mysql -e "CREATE USER ${db_user}@localhost identified by '${db_pass}'"
-    sudo mysql -e "GRANT ALL PRIVILEGES ON ${db_name}.* TO ${db_user}@localhost"
+    sudo mysql -e "CREATE DATABASE IF NOT EXISTS \`$db_name\`"
+    sudo mysql -e "CREATE USER \`${db_user}\`@localhost identified by '${db_pass}'"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON \`${db_name}\`.* TO \`${db_user}\`@localhost"
     sudo mysql -e "FLUSH PRIVILEGES"
     echo 'DB created!'
 }
@@ -292,11 +294,6 @@ function remove_nginx {
     echo "Nginx vhost entry removed for $domain."
 }
 
-function remove_hosts_file_entry {
-    sudo sed -i "/$domain/d" /etc/hosts
-    echo "Hosts file entry is removed for $domain."
-}
-
 function remove_mysql {
     sudo mysql -e "DROP DATABASE IF EXISTS $db_name"
     sudo mysql -e "DROP USER IF EXISTS ${db_user}@localhost"
@@ -342,7 +339,6 @@ function remove_cron {
 # to remove WP site
 # in the following, the order doesn't matter
 # remove_nginx
-# remove_hosts_file_entry
 # remove_mysql
 # remove_wp
 # remove_cron
@@ -358,7 +354,6 @@ fi
 
 if [ "$delete_site" == "y" ] ; then
     remove_nginx
-    remove_hosts_file_entry
     remove_mysql
     remove_wp
     remove_cron
