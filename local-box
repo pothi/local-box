@@ -220,6 +220,9 @@ function install_wp {
     [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
     wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
 
+    # remove welcome screen
+    wp user meta update $wp_user_name show_welcome_panel 0
+
     add_cron
     echo 'WP downloaded and configured!'; echo
 }
