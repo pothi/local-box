@@ -246,11 +246,10 @@ create_static() {
     if [ ! -f /etc/nginx/sites-enabled/${domain}.conf ] ; then
         cd /etc/nginx/sites-available/
         sudo cp static-site.conf ${domain}.conf
-        sudo sed -i "s:/etc/letsencrypt/live/example.com/fullchain.pem:${fullchain_file}:" ${domain}.conf
-        sudo sed -i "s:/etc/letsencrypt/live/example.com/privkey.pem:${privkey_file}:" ${domain}.conf
         sudo sed -i "s:example.com:${domain}:g"         ${domain}.conf
         sudo sed -i "s:/home/username:${home_dir}:"     ${domain}.conf
         sudo sed -i "s:/home/username:${home_dir}:g"    ${domain}.conf
+        sudo sed -i "/ssl_certificate/d" ${domain}.conf
         cd /etc/nginx/sites-enabled/
         sudo ln -s ../sites-available/${domain}.conf .
         sudo nginx -t && sudo systemctl restart nginx
