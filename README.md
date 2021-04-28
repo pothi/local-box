@@ -1,16 +1,16 @@
 # Local Development Box
 
-Script/s to install L(E/A)MP in a local server, aimed towards local development of PHP / WordPress sites.
+Script to quickly install and remove WordPress, PHP and static sites on a local LEMP server.
 
 ## Supported Platforms
 
-+ Juno (Elementary OS)
-+ Pop!OS
 + Ubuntu 18.04
 
 ## Generic Goals
 
-In sync with WordPress philosophy of “[decision, not options](https://wordpress.org/about/philosophy/)”.
+* To bootstrap a new WordPress site quickly.
+* To remove a new WordPress site.
+* To create or remove a new PHP site automatically.
 
 ## Performance Checklist
 
@@ -21,9 +21,8 @@ In sync with WordPress philosophy of “[decision, not options](https://wordpres
 
 ## Security Considerations
 
-- Password based logins are disabled.
-- Umask 027 or 077.
-- ACL integration.
+- A user needs the following entry in sudoers file... 'user ALL=(ALL) NOPASSWD: /usr/bin/mysql, /usr/sbin/nginx, /usr/bin/systemctl, /usr/bin/ln, /usr/bin/cp, /usr/bin/rm, /usr/bin/sed' (replace user with the actual username)
+- A common certificate needs to be present for all local sites already. Recommended to use a real certificate.
 - Credentials-less login for PhpMyAdmin for local network.
 
 ## Implementation Details
@@ -44,36 +43,6 @@ In sync with WordPress philosophy of “[decision, not options](https://wordpres
 ## Install procedure
 
 - Rename `.envrc-sample` file as `.envrc` and insert as much information as possible
-- Download `bootstrap.sh` and execute it.
+- Set correct sudo permission ('user ALL=(ALL) NOPASSWD: /usr/bin/mysql, /usr/sbin/nginx, /usr/bin/systemctl, /usr/bin/ln, /usr/bin/cp, /usr/bin/rm, /usr/bin/sed'). Replace user with the actual username.
+- Download local-box and try to execute it.
 
-```bash
-# as root
-
-apt install curl screen -y
-
-# optional steps
-# curl -LO https://github.com/pothi/local-dev-box/raw/master/.envrc-sample
-cp .envrc-sample .envrc
-nano .envrc
-
-# then create the directories and files that are from /etc/skell for the user 'pothi' (or whoever)
-
-# download the bootstrap script
-curl -LO https://raw.githubusercontent.com/pothi/local-box/master/bootstrap-local-box.sh
-
-# please do not trust any script on the internet or github
-# so, please go through it!
-nano ~/bootstrap-local-box.sh
-
-# execute it and wait for some time
-# screen bash bootstrap-local-box.sh
-# or simply
-bash bootstrap-local-box.sh
-
-rm bootstrap-local-box.sh
-
-```
-
-## Wiki
-
-For more documentation, supported / tested hosts, todo, etc, please see the [WP-In-A-Box wiki](https://github.com/pothi/wp-in-a-box/wiki).
