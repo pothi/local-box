@@ -128,8 +128,8 @@ db_prefix=$(/usr/bin/pwgen -A 2 1)
 # https://www.php.net/manual/en/timezones.php
 timezone_string=${TIMEZONE_STRING_OR_OFFSET:-""}
 
-wp_user_name=${WP_USERNAME:-""}
-wp_user_pass=${WP_PASSWORD:-""}
+wp_user_name=${WP_LOCAL_USERNAME:-""}
+wp_user_pass=${WP_LOCAL_PASSWORD:-""}
 
 function bootstrap_env {
     user=
@@ -141,13 +141,13 @@ function bootstrap_env {
     # setup WordPress user name
     [ -z "$wp_user_name" ] && {
         wp_user_name="${user}_$(/usr/bin/pwgen -cns 4 1)"
-        echo "export WP_USERNAME=${wp_user_name}" >> ~/.envrc
+        echo "export WP_LOCAL_USERNAME=${wp_user_name}" >> ~/.envrc
     }
 
     # setup WordPress user password
     [ -z "$wp_user_pass" ] && {
         wp_user_pass="$(/usr/bin/pwgen -cnsv 24 1)"
-        echo "export WP_PASSWORD=\"${wp_user_pass}\"" >> ~/.envrc
+        echo "export WP_LOCAL_PASSWORD=\"${wp_user_pass}\"" >> ~/.envrc
     }
 
     # echo $wp_user_name
