@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-# version 2.1
+# version 3.0
 # changelog
+# version: 3.0
+#   - date: 2023-02-09
+#   - compatibility with Ubuntu 22.04
 # version: 2.1
 #   - date: 2020-04-15
 #   - compatibility for dev user
@@ -119,8 +122,8 @@ domain=$1
 tld=$(echo $domain | awk -F '.' '{print $1}')
 db_name=${tld}_db
 db_user=${tld}_user
-db_pass=$(/usr/bin/pwgen -cnsv 20 1)
-db_prefix=$(/usr/bin/pwgen -A 2 1)
+db_pass=$(openssl rand -base64 32 | tr -d /=+ | cut -c -10)
+db_prefix=$(openssl rand -base64 32 | tr -d /=+ | cut -c -5)
 
 [ -f ~/.envrc  ] && source ~/.envrc
 
@@ -128,8 +131,8 @@ db_prefix=$(/usr/bin/pwgen -A 2 1)
 # https://www.php.net/manual/en/timezones.php
 timezone_string=${TIMEZONE_STRING_OR_OFFSET:-""}
 
-wp_user_name=${WP_LOCAL_USERNAME:-""}
-wp_user_pass=${WP_LOCAL_PASSWORD:-""}
+wp_user_name=${WP_LOCAL_USER:-""}
+wp_user_pass=${WP_LOCAL_PASS:-""}
 
 function bootstrap_env {
     user=
@@ -140,13 +143,13 @@ function bootstrap_env {
 
     # setup WordPress user name
     [ -z "$wp_user_name" ] && {
-        wp_user_name="${user}_$(/usr/bin/pwgen -cns 4 1)"
+        wp_user_name="${user}_$(openssl rand -base64 32 | tr -d /=+ | cut -c -4)"
         echo "export WP_LOCAL_USERNAME=${wp_user_name}" >> ~/.envrc
     }
 
     # setup WordPress user password
     [ -z "$wp_user_pass" ] && {
-        wp_user_pass="$(/usr/bin/pwgen -cnsv 24 1)"
+        wp_user_pass="$(openssl rand -base64 32 | tr -d /=+ | cut -c -24)"
         echo "export WP_LOCAL_PASSWORD=\"${wp_user_pass}\"" >> ~/.envrc
     }
 
@@ -175,7 +178,7 @@ function bootstrap_env {
 function create_mysql {
     sudo mysql -e "CREATE DATABASE IF NOT EXISTS \`$db_name\`"
     sudo mysql -e "CREATE USER \`${db_user}\`@localhost identified by '${db_pass}'"
-    sudo mysql -e "GRANT ALL PRIVILEGES ON \`${db_name}\`.* TO \`${db_user}\`@localhost"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON \`${db_name}\`.* TO \`${db_user}\`@localhost WITH GRANT OPTION"
     sudo mysql -e "FLUSH PRIVILEGES"
     echo 'DB created!'; echo
 }
@@ -185,8 +188,8 @@ function add_cron {
 
     # trigger WP Cron via server cron
     if ! $(crontab -l | grep -qw $domain) ; then
-        ( crontab -l; echo "@hourly curl --silent -L http://$domain/wp-cron.php &> /dev/null" ) | crontab -
-        ( crontab -l; echo "@hourly /usr/local/bin/wp --path=~/sites/$domain/public cron event run --due-now &> /dev/null" ) | crontab -
+        ( crontab -l; echo "@hourly curl --silent -L https://$domain/wp-cron.php &> /dev/null" ) | crontab -
+        # ( crontab -l; echo "@hourly wp --path=~/sites/$domain/public cron event run --due-now &> /dev/null" ) | crontab -
     fi
 }
 
@@ -356,12 +359,12 @@ bootstrap_env
 if [ "$new_wp_site" == "y" ] ; then
     # set -x
     create_mysql
-    create_nginx
+    # create_nginx
     install_wp
 fi
 
 if [ "$delete_site" == "y" ] ; then
-    remove_nginx
+    # remove_nginx
     remove_mysql
     remove_wp
     remove_cron
@@ -369,7 +372,7 @@ fi
 
 if [ "$php_site" == "y" ] ; then
     create_mysql
-    create_nginx
+    # create_nginx
     create_php
 fi
 

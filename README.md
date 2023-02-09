@@ -4,7 +4,7 @@ Script to quickly install and remove WordPress, PHP and static sites on a local 
 
 ## Supported Platforms
 
-+ Ubuntu 18.04
++ Ubuntu LTS last two versions!
 
 ## Generic Goals
 
@@ -16,7 +16,7 @@ Script to quickly install and remove WordPress, PHP and static sites on a local 
 
 - Redis for object cache (with memcached as an option)
 - WP Super Cache as full page cache (with Batcache as an alternative)
-- PHP 7.x
+- PHP 8.x
 - Nginx with Apache
 
 ## Security Considerations
