@@ -1,0 +1,8 @@
+# For local WP sites
+export WP_LOCAL_ADMIN_USER=
+export WP_LOCAL_ADMIN_PASS=
+export WP_LOCAL_ADMIN_EMAIL=
+
+export TIMEZONE_STRING_OR_OFFSET="Asia/Kolkata"
+# TODO: the following doesn't work due to a bug in wp cli
+# export TIMEZONE_STRING_OR_OFFSET="+05:30"

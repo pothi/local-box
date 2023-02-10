@@ -131,8 +131,9 @@ db_prefix=$(openssl rand -base64 32 | tr -d /=+ | cut -c -5)
 # https://www.php.net/manual/en/timezones.php
 timezone_string=${TIMEZONE_STRING_OR_OFFSET:-""}
 
-wp_user_name=${WP_LOCAL_USER:-""}
-wp_user_pass=${WP_LOCAL_PASS:-""}
+wp_admin_name=${WP_LOCAL_ADMIN_USER:-""}
+wp_admin_pass=${WP_LOCAL_ADMIN_PASS:-""}
+wp_admin_email=${WP_LOCAL_ADMIN_EMAIL:-"root@localhost"}
 
 function bootstrap_env {
     user=
@@ -142,19 +143,19 @@ function bootstrap_env {
     [ -z "$home_dir" ] && home_dir=$HOME
 
     # setup WordPress user name
-    [ -z "$wp_user_name" ] && {
-        wp_user_name="${user}_$(openssl rand -base64 32 | tr -d /=+ | cut -c -4)"
-        echo "export WP_LOCAL_USERNAME=${wp_user_name}" >> ~/.envrc
+    [ -z "$wp_admin_name" ] && {
+        wp_admin_name="${user}_$(openssl rand -base64 32 | tr -d /=+ | cut -c -4)"
+        echo "export WP_LOCAL_USERNAME=${wp_admin_name}" >> ~/.envrc
     }
 
     # setup WordPress user password
-    [ -z "$wp_user_pass" ] && {
-        wp_user_pass="$(openssl rand -base64 32 | tr -d /=+ | cut -c -24)"
-        echo "export WP_LOCAL_PASSWORD=\"${wp_user_pass}\"" >> ~/.envrc
+    [ -z "$wp_admin_pass" ] && {
+        wp_admin_pass="$(openssl rand -base64 32 | tr -d /=+ | cut -c -24)"
+        echo "export WP_LOCAL_PASSWORD=\"${wp_admin_pass}\"" >> ~/.envrc
     }
 
-    # echo $wp_user_name
-    # echo $wp_user_pass
+    # echo $wp_admin_name
+    # echo $wp_admin_pass
 
     # initialize site_path that is based on home_dir value
     site_path=$home_dir/sites/${domain}/public
@@ -208,7 +209,13 @@ function install_wp {
     wp_config_file=${parent_site_path}/wp-config.php
 
     # install WP
-    wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
+    wp core install \
+        --url="https://${domain}" \
+        --title=$domain \
+        --admin_email="${wp_admin_email}" \
+        --admin_user=$wp_admin_name \
+        --admin_password="${wp_admin_pass}" \
+        --skip-email
 
     # download a default favicon
     [ ! -f favicon.ico ] && wget -q https://wordpress.org/favicon.ico
@@ -224,7 +231,7 @@ function install_wp {
     wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
 
     # remove welcome screen
-    wp user meta update $wp_user_name show_welcome_panel 0
+    wp user meta update $wp_admin_name show_welcome_panel 0
 
     add_cron
     echo 'WP downloaded and configured!'; echo
@@ -276,7 +283,7 @@ function create_nginx {
     sudo sed -i "s:example.com:${domain}:g"         ${domain}.conf
     sudo sed -i "s:/home/username:${home_dir}:"     ${domain}.conf
     sudo sed -i "s:/home/username:${home_dir}:g"    ${domain}.conf
-    sudo sed -i "/ssl_certificate/d" ${domain}.conf
+    sudo sed -i '/ssl_certificate/d' ${domain}.conf
     cd /etc/nginx/sites-enabled/
     sudo ln -s ../sites-available/${domain}.conf .
     sudo nginx -t && sudo systemctl restart nginx
@@ -285,11 +292,17 @@ function create_nginx {
 }
 
 function reset_wp {
-    # required variables: $site_path, $domain, $wp_user_name, $wp_user_pass
+    # required variables: $site_path, $domain, $wp_admin_name, $wp_admin_pass
     cd $site_path
     if [ ! -z $wp_config_file ] ; then
         wp db reset --yes
-        wp core install --url="https://${domain}" --title=$domain --admin_user=$wp_user_name --admin_email="${user}@${domain}" --admin_password="${wp_user_pass}" --skip-email
+        wp core install \
+            --url="https://${domain}" \
+            --title=$domain \
+            --admin_user=$wp_admin_name \
+            --admin_email="${wp_admin_email}" \
+            --admin_password="${wp_admin_pass}" \
+            --skip-email
         wp rewrite structure '/%postname%/'
         [ ! -z "$timezone_string" ] && wp option update timezone_string $timezone_string
     else
@@ -359,12 +372,12 @@ bootstrap_env
 if [ "$new_wp_site" == "y" ] ; then
     # set -x
     create_mysql
-    # create_nginx
+    create_nginx
     install_wp
 fi
 
 if [ "$delete_site" == "y" ] ; then
-    # remove_nginx
+    remove_nginx
     remove_mysql
     remove_wp
     remove_cron
