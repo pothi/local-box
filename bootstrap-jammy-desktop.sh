@@ -116,6 +116,21 @@ do
     fi
 done
 
+# --classic riseup-vpn
+required_snap_packages="at \
+    authy \
+    riseup-vpn \
+    shellcheck \
+    xclip"
+
+for package in $required_snap_packages
+do
+    printf '%-72s' "Installing '${package}' ..."
+    snap install $package > /dev/null
+    check_result "Error: couldn't install $package."
+    echo done.
+done
+
 #--- setup timezone ---#
 # To be skipped for desktop
 # set_utc_timezone
@@ -401,15 +416,22 @@ fi
 # cp /etc/dnsmasq.conf /etc/systemd/resolved.conf ~/backups/
 DNSMASQ_ADD=127.0.53.1
 LOCAL_DOMAIN=${PRIMARY_DOMAIN:-"jammy.example.com"}
-sed -i "s:^# \?\(listen-address=\):\1$DNSMASQ_ADD:" /etc/dnsmasq.conf
-sed -i "s:^# \?\(bind-interfaces\):\1:" /etc/dnsmasq.conf
-[ ! -f /etc/dnsmasq.d/jammy ] && \
+# sed -i "s:^# \?\(listen-address=\):\1$DNSMASQ_ADD:" /etc/dnsmasq.conf
+# sed -i "s:^# \?\(bind-interfaces\):\1:" /etc/dnsmasq.conf
+
+# Ref: https://wiki.archlinux.org/title/Dnsmasq
+[ -f /etc/dnsmasq.d/listen-locally ] || \
+    echo -e "bind-interfaces\nlisten-address=$DNSMASQ_ADD" > /etc/dnsmasq.d/listen-locally
+[ -f /etc/dnsmasq.d/jammy ] || \
     echo "address=/.${LOCAL_DOMAIN}/$DNSMASQ_ADD" > /etc/dnsmasq.d/jammy
+[ -f /etc/dnsmasq.d/custom-dns-servers ] || \
+    echo -e "no-resolv\nserver=1.1.1.1\nserver=8.8.8.8" > /etc/dnsmasq.d/custom-dns-servers
+
 systemctl restart dnsmasq
 
-[ ! -d /etc/systemd/resolved.conf.d ] && mkdir /etc/systemd/resolved.conf.d
-[ ! -f /etc/systemd/resolved.conf.d/dnsmasq.conf ] && \
-    echo "DNS=$DNSMASQ_ADD" > /etc/systemd/resolved.conf.d/dnsmasq.conf
+[ -d /etc/systemd/resolved.conf.d ] || mkdir /etc/systemd/resolved.conf.d
+[ -f /etc/systemd/resolved.conf.d/dnsmasq-upstream.conf ] || \
+    echo "DNS=$DNSMASQ_ADD" > /etc/systemd/resolved.conf.d/dnsmasq-upstream.conf
 systemctl restart systemd-resolved
 
 
@@ -451,6 +473,21 @@ printf '%-72s' "Installing etckeeper..."
 apt-get -qq install etckeeper > /dev/null
 sed -i 's/^GIT_COMMIT_OPTIONS=""$/GIT_COMMIT_OPTIONS="--quiet"/' /etc/etckeeper/etckeeper.conf
 echo done.
+
+# https://forum.mikrotik.com/viewtopic.php?p=970317#p970317
+printf '%-72s' "Configuring rsa support for ssh (client)..."
+[ -f /etc/ssh/ssh_config.d/rsa-support.conf ] || \
+    echo "PubkeyAcceptedAlgorithms +ssh-rsa" > /etc/ssh/ssh_config.d/rsa-support.conf
+echo done.
+
+# Fix for error with Ansible playbooks
+# https://help.ubuntu.com/community/Locale#Changing_settings_permanently
+printf '%-72s' "Configuring locales..."
+    [ -f ~/.pam_environment ] || echo "en_IN.utf8" > ~/.pam_environment
+echo done.
+echo "Note: changes take effect only after a fresh login."
+
+# TODO: Pull update-crontab.sh and create a new entry (automatically)
 
 echo All done.
 
