@@ -20,6 +20,8 @@
 set -o errexit -o pipefail -o noclobber -o nounset
 # set -x
 
+debug=
+
 # to be run as a normal user with password-less sudo privileges
 
 # create SSL
@@ -135,6 +137,13 @@ wp_admin_name=${WP_LOCAL_ADMIN_USER:-""}
 wp_admin_pass=${WP_LOCAL_ADMIN_PASS:-""}
 wp_admin_email=${WP_LOCAL_ADMIN_EMAIL:-"root@localhost"}
 
+if [ "$debug" ]; then
+    echo "WP User: $WP_LOCAL_ADMIN_USER"
+    echo "WP Pass: $WP_LOCAL_ADMIN_PASS"
+    echo "WP Email: $WP_LOCAL_ADMIN_EMAIL"
+    exit
+fi
+
 function bootstrap_env {
     user=
     home_dir=
@@ -145,13 +154,13 @@ function bootstrap_env {
     # setup WordPress user name
     [ -z "$wp_admin_name" ] && {
         wp_admin_name="${user}_$(openssl rand -base64 32 | tr -d /=+ | cut -c -4)"
-        echo "export WP_LOCAL_USERNAME=${wp_admin_name}" >> ~/.envrc
+        echo "export WP_LOCAL_ADMIN_USER=${wp_admin_name}" >> ~/.envrc
     }
 
     # setup WordPress user password
     [ -z "$wp_admin_pass" ] && {
         wp_admin_pass="$(openssl rand -base64 32 | tr -d /=+ | cut -c -24)"
-        echo "export WP_LOCAL_PASSWORD=\"${wp_admin_pass}\"" >> ~/.envrc
+        echo "export WP_LOCAL_ADMIN_PASS=\"${wp_admin_pass}\"" >> ~/.envrc
     }
 
     # echo $wp_admin_name
@@ -178,7 +187,7 @@ function bootstrap_env {
 
 function create_mysql {
     sudo mysql -e "CREATE DATABASE IF NOT EXISTS \`$db_name\`"
-    sudo mysql -e "CREATE USER \`${db_user}\`@localhost identified by '${db_pass}'"
+    sudo mysql -e "CREATE USER IF NOT EXISTS \`${db_user}\`@localhost identified by '${db_pass}'"
     sudo mysql -e "GRANT ALL PRIVILEGES ON \`${db_name}\`.* TO \`${db_user}\`@localhost WITH GRANT OPTION"
     sudo mysql -e "FLUSH PRIVILEGES"
     echo 'DB created!'; echo
@@ -396,5 +405,4 @@ fi
 if [ "$static_site" == "y" ] ; then
     create_static
 fi
-
 
