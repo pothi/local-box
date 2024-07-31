@@ -235,12 +235,23 @@ function install_wp {
     [ ! -z "$timezone_string" ] && wp option update timezone_string $timezone_string
 
     # install plugin to auto-update everything (WP core, plugins and themes)
-    mu_plugins_path="${site_path}/wp-content/mu-plugins"
+    content_path="${site_path}/wp-content"
+    mu_plugins_path="${content_path}/mu-plugins"
     [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
     wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
 
     # remove welcome screen
     wp user meta update $wp_admin_name show_welcome_panel 0
+
+    # configure some useful defaults for WP debug
+    wp config set WP_DEBUG_LOG true
+    wp config set WP_DEBUG_DISPLAY false
+
+    # prepare for object cache
+    wp config set WP_CACHE_KEY_SALT $(openssl rand -base64 32)
+
+    # WP Object Cache via memcached
+    wget -q -O ${content_path}/object-cache.php https://plugins.svn.wordpress.org/memcached/trunk/object-cache.php
 
     add_cron
     echo 'WP downloaded and configured!'; echo
