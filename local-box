@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
-# version 3.0
+# version 3.1
 # changelog
+# version: 3.1
+#   - date: 2024-08-01
+#   - install object cache
+#   - add defaults for WP debug
 # version: 3.0
 #   - date: 2023-02-09
 #   - compatibility with Ubuntu 22.04
@@ -135,7 +139,7 @@ timezone_string=${TIMEZONE_STRING_OR_OFFSET:-""}
 
 wp_admin_name=${WP_LOCAL_ADMIN_USER:-""}
 wp_admin_pass=${WP_LOCAL_ADMIN_PASS:-""}
-wp_admin_email=${WP_LOCAL_ADMIN_EMAIL:-"root@localhost"}
+wp_admin_email=${WP_LOCAL_ADMIN_EMAIL:-"wp-admin@$domain"}
 
 if [ "$debug" ]; then
     echo "WP User: $WP_LOCAL_ADMIN_USER"
@@ -204,18 +208,23 @@ function add_cron {
 }
 
 function install_wp {
-    [ ! -d ${site_path} ] && mkdir -p $site_path
-
-    # ideally should be done as normal user
-    cd $site_path
+    [ ! -d ${site_path} ] && mkdir -p $site_path && cd $site_path
 
     # download WP core
     wp core download || { echo "Warning: WP core already seem exists! In order to force download again using the flag --force"; }
 
     # create wp-config.php file
-    [ -z ${wp_config_file} ] && wp config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --dbprefix="${db_prefix}_"
-    mv wp-config.php ${parent_site_path}/
-    wp_config_file=${parent_site_path}/wp-config.php
+    if [ -z ${wp_config_file} ]; then
+        wp config create \
+            --dbname="$db_name" \
+            --dbuser="$db_user" \
+            --dbpass="$db_pass" \
+            --dbprefix="${db_prefix}_"
+
+        # optional: move it to one dir up
+        mv wp-config.php ${parent_site_path}/
+        wp_config_file=${parent_site_path}/wp-config.php
+    fi
 
     # install WP
     wp core install \
@@ -228,7 +237,6 @@ function install_wp {
 
     # download a default favicon
     [ ! -f favicon.ico ] && wget -q https://wordpress.org/favicon.ico
-    # chown -R $user:$user $home_dir/sites/${domain}
 
     # minor tweaks
     wp rewrite structure '/%postname%/'
@@ -238,7 +246,7 @@ function install_wp {
     content_path="${site_path}/wp-content"
     mu_plugins_path="${content_path}/mu-plugins"
     [ ! -d "${mu_plugins_path}" ] && mkdir ${mu_plugins_path}
-    wget -q -O ${mu_plugins_path}/auto-update-everything.php https://raw.githubusercontent.com/pothi/wordpress-mu-plugins/master/auto-update-everything.php
+    wget -q -O ${mu_plugins_path}/auto-update-all.php https://github.com/pothi/wp-mu-plugins/raw/main/auto-update-all.php
 
     # remove welcome screen
     wp user meta update $wp_admin_name show_welcome_panel 0
@@ -252,6 +260,10 @@ function install_wp {
 
     # WP Object Cache via memcached
     wget -q -O ${content_path}/object-cache.php https://plugins.svn.wordpress.org/memcached/trunk/object-cache.php
+
+    # Enable auto-updates
+    wp plugin auto-updates enable --all
+    wp theme auto-updates enable --all
 
     add_cron
     echo 'WP downloaded and configured!'; echo
@@ -416,4 +428,3 @@ fi
 if [ "$static_site" == "y" ] ; then
     create_static
 fi
-
